@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ page.title | default: site.title }}</title>
+
+  <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+</head>
+<body>
+
+  <div id="customBgLayer"></div>
+
+  <div class="app-container">
+    <div class="app-header">
+      <div class="brand">
+        <div class="icon-bell">
+          <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+        </div>
+        <div class="brand-title">{{ site.title }}</div>
+      </div>
+      <span class="badge-status" id="userStatus">Gratuito</span>
+    </div>
+
+    <!-- Login -->
+    <div class="user-info" id="userInfoBox">
+      <span id="userName">Não conectado</span>
+      <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="handleAuth()" id="authBtn">Entrar com Google</button>
+    </div>
+
+    <!-- Pré-visualização -->
+    <div class="form-group">
+      <label>Pré-visualização Nativas (Android)</label>
+      <div class="preview-box">
+        <div class="preview-icon" id="prevIcon">N</div>
+        <div class="preview-content">
+          <div class="preview-header">
+            <span>{{ site.title }}</span>
+            <span>Agora</span>
+          </div>
+          <div class="preview-title" id="prevTitle">Lembrete Importante</div>
+          <div class="preview-body" id="prevBody">Sua mensagem vai aparecer aqui...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inputs -->
+    <div class="form-group">
+      <label for="modelName">Nome do Modelo</label>
+      <input type="text" id="modelName" placeholder="Ex: Lembrete de Reunião" />
+    </div>
+
+    <div class="form-group">
+      <label for="notifTitle">Título</label>
+      <input type="text" id="notifTitle" placeholder="Digite o título..." value="Lembrete Importante" oninput="updatePreview()" />
+    </div>
+
+    <div class="form-group">
+      <label for="notifBody">Mensagem</label>
+      <textarea id="notifBody" rows="2" placeholder="Digite a mensagem..." oninput="updatePreview()">Hora de tomar o remédio ou verificar a reunião!</textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="scheduleTime">Agendamento (Data e Hora)</label>
+      <input type="datetime-local" id="scheduleTime" />
+    </div>
+
+    <!-- Botões -->
+    <div class="btn-container">
+      <button class="btn-primary btn-disabled" id="btnSend" onclick="handleSend()">Enviar Agora (Premium)</button>
+      <button class="btn-secondary btn-disabled" id="btnSchedule" onclick="handleSchedule()">Agendar Notificação (Premium)</button>
+      <button class="btn-secondary" id="btnUpgrade" onclick="openPixModal()">Assinar Premium - R$ {{ site.pix.price }}</button>
+    </div>
+
+    <div class="admin-link" id="adminLink" style="display: none;" onclick="openAdminPanel()">Acessar Painel Administrativo</div>
+  </div>
+
+  <!-- Modal Pix -->
+  <div class="modal" id="pixModal">
+    <div class="modal-content">
+      <h3>Assinatura Premium</h3>
+      <p style="font-size: 0.8rem; color: var(--text-sub);">Pagamento Único: <b>R$ {{ site.pix.price }}</b></p>
+      
+      <div class="qr-placeholder" id="qrContainer">
+        [ QR CODE PIX ]
+      </div>
+
+      <input type="text" readonly value="{{ site.pix.key }}" id="pixKey" />
+      <button class="btn-secondary" onclick="copyPix()">Copiar Chave Pix</button>
+
+      <div style="text-align: left;">
+        <label>Comprovante (Imagem ou PDF)</label>
+        <input type="file" id="proofFile" accept="image/*,.pdf" style="margin-top: 4px; width: 100%;" />
+      </div>
+
+      <button class="btn-primary" onclick="submitProof()">Enviar Comprovante</button>
+      <button class="btn-secondary" style="background: transparent;" onclick="closePixModal()">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal Admin -->
+  <div class="modal" id="adminModal">
+    <div class="modal-content" style="max-width: 400px; text-align: left;">
+      <h3>Painel Administrativo</h3>
+      <p style="font-size: 0.75rem; color: var(--text-sub);">Restrito aos Administradores Autorizados</p>
+
+      <div class="form-group">
+        <label>URL da Imagem de Fundo</label>
+        <input type="text" id="bgUrlInput" placeholder="https://..." />
+      </div>
+
+      <div class="form-group">
+        <label>Desfoque (Blur): <span id="blurVal">16px</span></label>
+        <input type="range" min="0" max="30" value="16" oninput="updateBgStyle('blur', this.value)" />
+      </div>
+
+      <div class="form-group">
+        <label>Brilho: <span id="brightVal">100%</span></label>
+        <input type="range" min="20" max="150" value="100" oninput="updateBgStyle('brightness', this.value)" />
+      </div>
+
+      <button class="btn-primary" onclick="applyCustomBg()">Aplicar Fundo</button>
+      <button class="btn-secondary" onclick="resetBg()">Restaurar Padrão</button>
+      <button class="btn-secondary" style="background: transparent;" onclick="closeAdminPanel()">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Injeção das Variáveis do Jekyll no JS -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "{{ site.firebase.apiKey }}",
+      authDomain: "{{ site.firebase.authDomain }}",
+      projectId: "{{ site.firebase.projectId }}",
+      storageBucket: "{{ site.firebase.storageBucket }}",
+      messagingSenderId: "{{ site.firebase.messagingSenderId }}",
+      appId: "{{ site.firebase.appId }}"
+    };
+
+    const adminEmails = {{ site.pix.admins | jsonify }};
+  </script>
+  
+  <script src="{{ '/assets/js/app.js' | relative_url }}"></script>
+</body>
+  </html>
