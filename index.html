@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notifiquei Pro</title>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+      --glass-bg: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.18);
+      --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+      --accent-color: #8b5cf6;
+      --accent-hover: #7c3aed;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --bg-blur: 16px;
+      --bg-brightness: 1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Camada de Fundo Dinâmica (Admin) */
+    #customBgLayer {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      backdrop-filter: blur(var(--bg-blur)) brightness(var(--bg-brightness));
+      -webkit-backdrop-filter: blur(var(--bg-blur)) brightness(var(--bg-brightness));
+      z-index: -1;
+      transition: all 0.3s ease;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 420px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      box-shadow: var(--glass-shadow);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Header & Icon */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .icon-bell {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(145deg, #ffffff, #d1d5db);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2);
+    }
+
+    .icon-bell svg {
+      width: 24px;
+      height: 24px;
+      fill: #4b5563;
+    }
+
+    .brand-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .badge-status {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .badge-status.premium {
+      background: rgba(16, 185, 129, 0.2);
+      color: #6ee7b7;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    /* Login Box */
+    .user-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+      font-size: 0.85rem;
+    }
+
+    /* Form UI */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      font-weight: 500;
+    }
+
+    input, textarea, select {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3);
+    }
+
+    /* Android Notification Preview */
+    .preview-box {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 12px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .preview-icon {
+      width: 32px;
+      height: 32px;
+      background: #38bdf8;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #0f172a;
+      flex-shrink: 0;
+    }
+
+    .preview-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      width: 100%;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-sub);
+    }
+
+    .preview-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .preview-body {
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+
+    /* Action Buttons */
+    .btn-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    button {
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--accent-color);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid var(--glass-border);
+    }
+
+    .btn-disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Modais */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 100;
+    }
+
+    .modal-content {
+      background: #1e293b;
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 20px;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .qr-placeholder {
+      width: 160px;
+      height: 160px;
+      background: white;
+      margin: 0 auto;
+      border-radius: 12px;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0f172a;
+      font-weight: bold;
+    }
+
+    .admin-link {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      text-align: center;
+      cursor: pointer;
+      text-decoration: underline;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="customBgLayer"></div>
+
+  <div class="app-container">
+    <div class="app-header">
+      <div class="brand">
+        <div class="icon-bell">
+          <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+        </div>
+        <div class="brand-title">Notifiquei Pro</div>
+      </div>
+      <span class="badge-status" id="userStatus">Gratuito</span>
+    </div>
+
+    <!-- Seção de Usuário e Autenticação -->
+    <div class="user-info" id="userInfoBox">
+      <span id="userName">Não conectado</span>
+      <button class="btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;" onclick="handleAuth()" id="authBtn">Entrar com Google</button>
+    </div>
+
+    <!-- Pré-visualização Android N
+    ativa -->
+    <div class="form-group">
+      <label>Pré-visualização Nativas (Android)</label>
+      <div class="preview-box">
+        <div class="preview-icon" id="prevIcon">N</div>
+        <div class="preview-content">
+          <div class="preview-header">
+            <span>Notifiquei Pro</span>
+            <span>Agora</span>
+          </div>
+          <div class="preview-title" id="prevTitle">Lembrete Importante</div>
+          <div class="preview-body" id="prevBody">Sua mensagem vai aparecer exatamente assim no sistema.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Criador de Notificação -->
+    <div class="form-group">
+      <label for="modelName">Nome do Modelo</label>
+      <input type="text" id="modelName" placeholder="Ex: Lembrete de Reunião" />
+    </div>
+
+    <div class="form-group">
+      <label for="notifTitle">Título</label>
+      <input type="text" id="notifTitle" placeholder="Digite o título..." value="Lembrete Importante" oninput="updatePreview()" />
+    </div>
+
+    <div class="form-group">
+      <label for="notifBody">Mensagem</label>
+      <textarea id="notifBody" rows="2" placeholder="Digite a mensagem..." oninput="updatePreview()">Hora de tomar o remédio ou verificar a reunião!</textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="scheduleTime">Agendamento (Data e Hora)</label>
+      <input type="datetime-local" id="scheduleTime" />
+    </div>
+
+    <!-- Ações e Restrições Plano Free x Premium -->
+    <div class="btn-container">
+      <button class="btn-primary btn-disabled" id="btnSend" onclick="handleSend()">Enviar Agora (Premium)</button>
+      <button class="btn-secondary btn-disabled" id="btnSchedule" onclick="handleSchedule()">Agendar Notificação (Premium)</button>
+      <button class="btn-secondary" id="btnUpgrade" onclick="openPixModal()">Assinar Premium - R$ 48,90</button>
+    </div>
+
+    <div class="admin-link" id="adminLink" style="display: none;" onclick="openAdminPanel()">Acessar Painel Administrativo</div>
+  </div>
+
+  <!-- Modal Pix -->
+  <div class="modal" id="pixModal">
+    <div class="modal-content">
+      <h3>Assinatura Premium</h3>
+      <p style="font-size: 0.8rem; color: var(--text-sub);">Pagamento Único: <b>R$ 48,90</b></p>
+      
+      <div class="qr-placeholder" id="qrContainer">
+        [ QR CODE PIX ]
+      </div>
+
+      <input type="text" readonly value="00020126580014BR.GOV.BCB.PIX..." id="pixKey" />
+      <button class="btn-secondary" onclick="copyPix()">Copiar Chave Pix</button>
+
+      <div style="text-align: left;">
+        <label>Comprovante (Imagem ou PDF)</label>
+        <input type="file" id="proofFile" accept="image/*,.pdf" style="margin-top: 4px; width: 100%;" />
+      </div>
+
+      <button class="btn-primary" onclick="submitProof()">Enviar Comprovante</button>
+      <button class="btn-secondary" style="background: transparent;" onclick="closePixModal()">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal Painel Admin -->
+  <div class="modal" id="adminModal">
+    <div class="modal-content" style="max-width: 400px; text-align: left;">
+      <h3>Painel Administrativo</h3>
+      <p style="font-size: 0.75rem; color: var(--text-sub);">Restrito aos Administradores Autorizados</p>
+
+      <div class="form-group">
+        <label>URL da Imagem de Fundo</label>
+        <input type="text" id="bgUrlInput" placeholder="https://..." />
+      </div>
+
+      <div class="form-group">
+        <label>Desfoque (Blur): <span id="blurVal">16px</span></label>
+        <input type="range" min="0" max="30" value="16" oninput="updateBgStyle('blur', this.value)" />
+      </div>
+
+      <div class="form-group">
+        <label>Brilho: <span id="brightVal">100%</span></label>
+        <input type="range" min="20" max="150" value="100" oninput="updateBgStyle('brightness', this.value)" />
+      </div>
+
+      <button class="btn-primary" onclick="applyCustomBg()">Aplicar Fundo</button>
+      <button class="btn-secondary" onclick="resetBg()">Restaurar Padrão</button>
+      <button class="btn-secondary" style="background: transparent;" onclick="closeAdminPanel()">Fechar</button>
+    </div>
+  </div>
+
+  <script>
+    // Configuração do Firebase (Substitua pelos valores do seu Console Firebase)
+    const firebaseConfig = {
+      apiKey: "SUA_API_KEY",
+      authDomain: "seu-app.firebaseapp.com",
+      projectId: "seu-app",
+      storageBucket: "seu-app.appspot.com",
+      messagingSenderId: "123456789",
+      appId: "1:123456789:web:abcdef"
+    };
+
+    // Inicialização do Firebase
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    let currentUser = null;
+    let isPremium = false;
+    const ADMIN_EMAILS = ["tfagro2023@gmail.com", "kauaesuelen03@gmail.com"];
+
+    // 1. Solicitando Permissão para Notificações do Aparelho
+    if ("Notification" in window) {
+      Notification.requestPermission();
+    }
+
+    // 2. Controle de Sessão de Usuário
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        document.getElementById('userName').innerText = user.displayName || user.email;
+        document.getElementById('authBtn').innerText = "Sair";
+        checkAdminRights(user.email);
+        listenUserData(user.uid);
+      } else {
+        currentUser = null;
+        isPremium = false;
+        document.getElementById('userName').innerText = "Não conectado";
+        document.getElementById('authBtn').innerText = "Entrar com Google";
+        updateUserStatusUI();
+      }
+    });
+
+    function handleAuth() {
+      if (currentUser) {
+        auth.signOut();
+      } else {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(err => alert("Erro ao autenticar: " + err.message));
+      }
+    }
+
+    function checkAdminRights(email) {
+      if (ADMIN_EMAILS.includes(email)) {
+        document.getElementById('adminLink').style.display = 'block';
+      } else {
+        document.getElementById('adminLink').style.display = 'none';
+      }
+    }
+
+    function listenUserData(uid) {
+      db.collection('users').doc(uid).onSnapshot(doc => {
+        if (doc.exists) {
+          isPremium = doc.data().isPremium || false;
+        } else {
+          db.collection('users').doc(uid).set({
+            email: currentUser.email,
+            name: currentUser.displayName,
+            isPremium: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          isPremium = false;
+        }
+        updateUserStatusUI();
+      });
+    }
+
+    function updateUserStatusUI() {
+      const statusBadge = document.getElementById('userStatus');
+      const btnSend = document.getElementById('btnSend');
+      const btnSchedule = document.getElementById('btnSchedule');
+
+      if (isPremium) {
+        statusBadge.innerText = "Premium";
+        statusBadge.classList.add("premium");
+        btnSend.classList.remove("btn-disabled");
+        btnSchedule.classList.remove("btn-disabled");
+        btnSend.innerText = "Enviar Agora";
+        btnSchedule.innerText = "Agendar Notificação";
+      } else {
+        statusBadge.innerText = "Gratuito";
+        statusBadge.classList.remove("premium");
+        btnSend.classList.add("btn-disabled");
+        btnSchedule.classList.add("btn-disabled");
+        btnSend.innerText = "Enviar Agora (Premium)";
+        btnSchedule.innerText = "Agendar Notificação (Premium)";
+      }
+    }
+
+    // 3. Sistema de Notificação do Aparelho
+    function updatePreview() {
+      const title = document.getElementById('notifTitle').value;
+      const body = document.getElementById('notifBody').value;
+
+      document.getElementById('prevTitle').innerText = title || "Título da Notificação";
+      document.getElementById('prevBody').innerText = body || "Sua mensagem vai aparecer aqui...";
+    }
+
+    function handleSend() {
+      if (!isPremium) {
+        alert('Disparo instantâneo é restrito a contas Premium.');
+        openPixModal();
+        return;
+      }
+
+      const title = document.getElementById('notifTitle').value;
+      const body = document.getElementById('notifBody').value;
+
+      if (Notification.permission === "granted") {
+        new Notification(title, {
+          body: body,
+          icon: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png'
+        });
+      } else {
+        alert("Ative as permissões de notificação no seu dispositivo para enviar.");
+      }
+    }
+
+    function handleSchedule() {
+      if (!isPremium) {
+        alert('Agendamento local é restrito a contas Premium.');
+        openPixModal();
+        return;
+      }
+
+      const title = document.getElementById('notifTitle').value;
+      const body = document.getElementById('notifBody').value;
+      const timeVal = document.getElementById('scheduleTime').value;
+
+      if (!timeVal) {
+        alert('Selecione a data e o horário para o agendamento.');
+        return;
+      }
+
+      const scheduleDate = new Date(timeVal).getTime();
+      const now = new Date().getTime();
+      const delay = scheduleDate - now;
+
+      if (delay <= 0) {
+        alert('Escolha uma data e horário no futuro.');
+        return;
+      }
+
+      alert(`Notificação agendada para ${new Date(timeVal).toLocaleString('pt-BR')}!`);
+
+      setTimeout(() => {
+        if (Notification.permission === "granted") {
+          new Notification(title, {
+            body: body,
+            icon: 'https://cdn-icons-png.flaticon.com/512/3602/3602145.png'
+          });
+        }
+      }, delay);
+    }
+
+    // 4. Fluxo Pix
+    function openPixModal() {
+      document.getElementById('pixModal').style.display = 'flex';
+    }
+
+    function closePixModal() {
+      document.getElementById('pixModal').style.display = 'none';
+    }
+
+    function copyPix() {
+      const key = document.getElementById('pixKey');
+      key.select();
+      document.execCommand('copy');
+      alert('Chave Pix copiada!');
+    }
+
+    function submitProof() {
+      if (!currentUser) {
+        alert("Por favor, faça login antes de enviar o comprovante.");
+        return;
+      }
+
+      const fileInput = document.getElementById('proofFile');
+      if (fileInput.files.length === 0) {
+        alert('Por favor, selecione o comprovante.');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const storageRef = storage.ref(`comprovantes/${currentUser.uid}_${Date.now()}`);
+
+      storageRef.put(file).then(snapshot => {
+        return snapshot.ref.getDownloadURL();
+      }).then(downloadURL => {
+        return db.collection('payments').add({
+          userId: currentUser.uid,
+          userEmail: currentUser.email,
+          userName: currentUser.displayName,
+          proofUrl: downloadURL,
+          status: 'PENDENTE',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }).then(() => {
+        alert('Comprovante enviado com sucesso! Status: PENDENTE. O alerta foi registrado para análise.');
+        closePixModal();
+      }).catch(err => {
+        alert('Erro ao enviar comprovante: ' + err.message);
+      });
+    }
+
+    // 5. Painel Administrativo
+    function openAdminPanel() {
+      if (currentUser && ADMIN_EMAILS.includes(currentUser.email)) {
+        document.getElementById('adminModal').style.display = 'flex';
+      } else {
+        alert("Acesso restrito aos administradores.");
+      }
+    }
+
+    function closeAdminPanel() {
+      document.getElementById('adminModal').style.display = 'none';
+    }
+
+    function updateBgStyle(type, val) {
+      if (type === 'blur') {
+        document.getElementById('blurVal').innerText = val + 'px';
+        document.documentElement.style.setProperty('--bg-blur', val + 'px');
+      } else if (type === 'brightness') {
+        document.getElementById('brightVal').innerText = val + '%';
+        document.documentElement.style.setProperty('--bg-brightness', (val / 100));
+      }
+    }
+
+    function applyCustomBg() {
+      const url = document.getElementById('bgUrlInput').value;
+      if (url) {
+        document.getElementById('customBgLayer').style.backgroundImage = `url('${url}')`;
+      }
+      closeAdminPanel();
+    }
+
+    function resetBg() {
+      document.getElementById('customBgLayer').style.backgroundImage = 'none';
+      updateBgStyle('blur', 16);
+      updateBgStyle('brightness', 100);
+      closeAdminPanel();
+    }
+  </script>
+</body>
+</html>
