@@ -1,16 +1,17 @@
 title: Notifiquei Pro
-description: Crie, envie e agende notificações locais personalizadas.
-url: "[https://amorim08kaua-ship-it.github.io/Pro-3/](https://amorim08kaua-ship-it.github.io/Pro-3/)"
+description: Crie, envie e agendamentos de notificações locais personalizadas.
+baseurl: "" # Deixe em branco se for o repositório principal do seu perfil
+url: "https://amorim08kaua.github.io"
 
-# Configurações Comerciais e Administrativas
+# Configurações do Pix e Admins
 pix:
   price: "48,90"
   key: "tfagro2023@gmail.com"
-admins:
+  admins:
     - "tfagro2023@gmail.com"
     - "kauaesuelen03@gmail.com"
 
-# Credenciais do Console Firebase
+# Credenciais do Firebase Console
 firebase:
   apiKey: "SUA_API_KEY"
   authDomain: "seu-app.firebaseapp.com"
@@ -18,4 +19,3 @@ firebase:
   storageBucket: "seu-app.appspot.com"
   messagingSenderId: "123456789"
   appId: "1:123456789:web:abcdef"
-  
